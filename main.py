@@ -15,6 +15,17 @@
   https://creativecommons.org/licenses/by-sa/4.0/ 
 """
 
+##########TODO###########
+# Linux(Y)Win(N) 1. using os module have a program that can simply crawl through a file system with try/except for permission errors
+# 2. using the ctypes module simply print to stdout a list of hidden windows files
+# 3. find a way to remove system files (maybe by keeping a list of names to iterate through) from the printed output
+# (Y) 4. find all linux files that start with a dot(.) at the start that represents a hidden file and print to output as it's own section
+# 5. user input for if they want to search all or just under a specific user, change code to accomidate this change.
+# 6. do some fun stuff with pretty tables to display files, display file extension through os module
+# 7. check to see if dump folder exists within project and if not create it
+# 8. copy paste found files into folder (sectioned by user it was found under?)
+##########################
+
 import os # For crawling through directories
 import pwd # For hidden file metadata on Unix-like systems
 import ctypes # For hidden file metadata on Windows
