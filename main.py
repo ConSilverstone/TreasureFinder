@@ -9,10 +9,10 @@
   A security tool for digging up hidden files on most operating systems.
   CTF - Red Team - Forensics - Incident Response
 
-  Created by: Connor Gallagher (ConSilverstone)
+  Created by: Connor Gallagher (TheMythicalGryphon)
   Version: 1.0.0
-  License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
-  https://creativecommons.org/licenses/by-sa/4.0/ 
+  License: MIT
+  https://mit-license.org/ 
 """
 
 ##########TODO###########
