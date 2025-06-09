@@ -32,10 +32,39 @@ def is_dpkg_file(file_path):
         return result.returncode == 0 and "no path found" not in result.stderr.lower()
     
     except FileNotFoundError:
-        print("dpkg package manager not found on this system")
+        print("dpkg package manager not found on this system, perhaps using a different package manager?")
         return False
     except Exception as e:
         print(f"An error occurred: {e}")
         return False
 
+def main():
+    """
+    Test Case Data using hard coded values,
+    change test_data to test areas of functionality.
+    """
 
+    test_data = [
+        "/usr/bin/nmap",  # True
+        "/usr/share/wordlists/rockyou.txt.gz",  # True
+        "/usr/share/metasploit-framework/msfconsole",  # True
+        "/home/user/somefile.txt",  # False
+        "/var/lib/dpkg/info/nonexistent.list",  # False
+        "/usr/share/wordlists/rockyou.txt",  # False
+        "/etc/ssh/sshd_config"  # False
+    ]
+
+    # Run tests and print results
+    test_results = []
+    for test in test_data:
+        # Run function
+        result = is_dpkg_file(test)
+        # Create tuple to contain results within list
+        test_results.append((test, result))
+    # Show results
+    print("Test Results:")
+    for file_path, result in test_results:
+        print(f"File: {file_path}, Exists?: {result}")
+
+if __name__ == "__main__":
+    main()
