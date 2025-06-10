@@ -33,7 +33,7 @@ import ctypes # For hidden file metadata on Windows
 """
 import for custom modules (OOP)
 """
-import FoolsGoldForLinux # For running dpkg commands on files
+import FoolsGoldForLinux # For running dpkg and stat commands on files
 
 os_name = os.name # 'posix' for Unix-like OS, 'nt' for Windows
 
@@ -75,8 +75,15 @@ def collect_system_data(os_name):
                     if uid == 0:
                         # Owned by root, we need to handle this differently.
                         # Some files under root may be system files and not user made files under root.
-                        # Run dpkg -S on the file to if it is known to the package manager, if not it's more likely a user made file.
+                        # First let's compare the creation date and see if it was after the OS was installed.
+                        # Using the final line of stat /var/log/installer/syslog we can get the "birth date" of the filesystem.
                         file_path = os.path.join(root, file)
+
+                        if not FoolsGoldForLinux.after_os_installation(file_path):
+                            
+
+                        # If it was created later, let's make sure not to include installed program files via dpkg.
+                        # Run dpkg -S on the file to if it is known to the package manager, if not it's more likely a user made file.
                         if not FoolsGoldForLinux.is_dpkg_file(file_path):
                             # If the file is not known to the package manager, it's likely a user made file.
                             print("Here be treasure!", root, file, uid)
