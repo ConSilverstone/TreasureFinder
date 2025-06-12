@@ -23,7 +23,6 @@ from os import stat # Pull statistics for creation date of a file
 
 # Global variable to track if a ValueError has been logged
 logger = logging.getLogger(__name__)
-value_error_logged = False
 
 def is_dpkg_file(file_path):
     """
@@ -69,24 +68,29 @@ def after_os_installation(file_path):
                 os_install_date_str = last_line.split()[0]
                 os_install_date = datetime.strptime(os_install_date_str, '%Y-%m-%d')
             except ValueError:
-                # Since multiple files are looped through this function, let's only display the error once.
-                if value_error_logged is False:
-                    logger.warning("There was a fault in parsing the OS installation date from syslog. ", 
-                                   "There will be a lot of fools gold (false positives) in the results.")
-                    value_error_logged = True
+                logger.warning("There was a fault in parsing the OS installation date from syslog. ", 
+                                "There will be a lot of fools gold (false positives) in the results.")
+                # An error occured, return none to let main.py know this function failed
                 return None
             except Exception as e:
                 print(f"An error occurred while reading syslog: {e}")
+                 # An error occured, return none to let main.py know this function failed
                 return None
 
         # Get the passed in file's creation date
-        file_creation_time = datetime.fromtimestamp(stat(file_path).st_ctime)
+        file_creation_time = datetime.fromtimestamp(stat(file_path).st_birthtime)
 
-        return file_creation_time > os_install_date
-
+        # Bool comparator, if file creation time is greater than install date
+        is_file_newer = False
+        if file_creation_time > os_install_date:
+            is_file_newer = True
+        else:
+            is_file_newer = False 
+        return is_file_newer
     except Exception as e:
         print(f"An error occurred while checking file creation date: {e}")
-        return False
+        # An error occured, return none to let main.py know this function failed
+        return None
 
 def main():
     """

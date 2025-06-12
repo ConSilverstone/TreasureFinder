@@ -34,7 +34,8 @@ import ctypes # For hidden file metadata on Windows
 import for custom modules (OOP)
 """
 import FoolsGoldForLinux # For running dpkg and stat commands on files
-
+# Protect program efficiency if failure in os_after_installation
+fools_gold_failure = False
 os_name = os.name # 'posix' for Unix-like OS, 'nt' for Windows
 
 def collect_system_data(os_name):
@@ -77,18 +78,39 @@ def collect_system_data(os_name):
                         # Some files under root may be system files and not user made files under root.
                         # First let's compare the creation date and see if it was after the OS was installed.
                         # Using the final line of stat /var/log/installer/syslog we can get the "birth date" of the filesystem.
+                        # True means that it was created after, false means it was created during (or on the day of)
+                        # A return of none means the function failed and we should handle that. 
                         file_path = os.path.join(root, file)
 
-                        if not FoolsGoldForLinux.after_os_installation(file_path):
-                            
+                        # Toggle to skip after_os_installation if critical failure occurs
+                        if fools_gold_failure == False:
+                            # Store result in variable to optimise code
+                            fools_gold_result = FoolsGoldForLinux.after_os_installation(file_path)
 
-                        # If it was created later, let's make sure not to include installed program files via dpkg.
-                        # Run dpkg -S on the file to if it is known to the package manager, if not it's more likely a user made file.
-                        if not FoolsGoldForLinux.is_dpkg_file(file_path):
-                            # If the file is not known to the package manager, it's likely a user made file.
-                            print("Here be treasure!", root, file, uid)
-                            hidden_files_count += 1
-                        
+                        if fools_gold_result == True:
+                            # True means created after os installation
+                            # If it was created later, let's make sure not to include installed program files via dpkg.
+                            # Run dpkg -S on the file to if it is known to the package manager, if not it's more likely a user made file.
+                            if not FoolsGoldForLinux.is_dpkg_file(file_path):
+                                # If the file is not known to the package manager, it's likely a user made file.
+                                print("Here be treasure!", root, file, uid)
+                                hidden_files_count += 1
+                        elif fools_gold_result == False:
+                            # False means created on the day of installation... 
+                            # Might knock of some valid "treasure" but this is an acceptable loss
+                            # Skip this file then!
+                            continue
+                        else:
+                            # This means the function returned None indicating a critical failure 
+                            # let's cut of checking for os_installation and just run is_dpkg_file
+                            # Run dpkg -S on the file to if it is known to the package manager, if not it's more likely a user made file.
+                            if not FoolsGoldForLinux.is_dpkg_file(file_path):
+                                # If the file is not known to the package manager, it's likely a user made file.
+                                print("Here be treasure!", root, file, uid)
+                                hidden_files_count += 1
+                            # Critial failure toggle switch
+                            fools_gold_failure = True
+                      
         # Print out the metrics
         print(f"Digging complete, {hidden_files_count} hidden treasures (files) found.")
         if not_found_count != 0:
@@ -108,4 +130,7 @@ def collect_system_data(os_name):
         input("Press any key to exit...")
         exit(1)
 
+"""
+Core program running functions and user interaction
+"""
 collect_system_data(os_name)
