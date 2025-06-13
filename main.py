@@ -26,28 +26,39 @@
 # 8. copy paste found files into folder (sectioned by user it was found under?)
 ##########################
 
+"""
+import for library modules
+"""
 import os # For crawling through directories
-import pwd # For hidden file metadata on Unix-like systems
 import ctypes # For hidden file metadata on Windows
+from string import ascii_uppercase # To iterate through and grab drives in windows
+# Using windows causes linux import modules below to fail, just take note and skip
+try:
+    import pwd # For hidden file metadata on Unix-like systems
+except ImportError:
+    print("Using Windows file system...")
 
 """
-import for custom modules (OOP)
+import for project modules (OOP)
 """
-import FoolsGoldForLinux # For running dpkg and stat commands on files
+import FoolsGoldForLinux # For running dpkg and stat commands on linux files
+
+"""
+Global Variables
+"""
 # Protect program efficiency if failure in os_after_installation
-fools_gold_failure = False
+fools_gold_linux_failure = False
 os_name = os.name # 'posix' for Unix-like OS, 'nt' for Windows
+# Set up some counters to track metrics
+hidden_files_count = 0
+not_found_count = 0
+permission_denied_count = 0
+unexpected_error_count = 0
 
 def collect_system_data(os_name):
     if os_name == 'posix':
         # Unix-like OS
-        print("Digging through data for Unix-like OS...")
-
-        # Set up some counters to track metrics
-        hidden_files_count = 0
-        not_found_count = 0
-        permission_denied_count = 0
-        unexpected_error_count = 0
+        print("Digging through file system for Unix-like OS...")
         
         # Start digging through the filesystem
         for root, directoryname, filenames in os.walk('/', topdown=True):
@@ -83,7 +94,7 @@ def collect_system_data(os_name):
                         file_path = os.path.join(root, file)
 
                         # Toggle to skip after_os_installation if critical failure occurs
-                        if fools_gold_failure == False:
+                        if fools_gold_linux_failure == False:
                             # Store result in variable to optimise code
                             fools_gold_result = FoolsGoldForLinux.after_os_installation(file_path)
 
@@ -109,7 +120,7 @@ def collect_system_data(os_name):
                                 print("Here be treasure!", root, file, uid)
                                 hidden_files_count += 1
                             # Critial failure toggle switch
-                            fools_gold_failure = True
+                            fools_gold_linux_failure = True
                       
         # Print out the metrics
         print(f"Digging complete, {hidden_files_count} hidden treasures (files) found.")
@@ -124,7 +135,39 @@ def collect_system_data(os_name):
 
     elif os_name == 'nt':
         # Windows OS
-        print("Digging through data for Windows OS...")
+        print("Digging through file system for Windows OS...")
+
+        # Load some Windows specific DLLs
+        GetFileAttributesW = ctypes.windll.kernel32.GetFileAttributesW
+        GetFileAttributesW.argtypes = [ctypes.c_wchar_p]
+        GetFileAttributesW.restype = ctypes.c_uint32    
+
+        # Define local variables
+        hidden_file_attribute = 0x2 # Or simply 00000010, second flag bit being set in file header representing hidden. 
+
+        # Loop through all possible drives and return only the ones that exist on this system
+        valid_drives = []
+        # Run though all uppercase letters
+        for drive_letter in ascii_uppercase:
+            # Put it in the format we need
+            drive_to_check = f"{drive_letter}:\\"
+            # Use os.path.exists function to check then add if true
+            if os.path.exists(drive_to_check):
+                valid_drives.append(drive_to_check)
+        print("Unencrypted drives that are available on this system:", valid_drives)
+
+        #iterate through the valid drives list
+        for walkable_drive in valid_drives:
+            #iterate through the file system (file_names is returned as a list of all files in folder)
+            for root_letter, folder_name, file_names in os.walk(walkable_drive, topdown=True):
+                # iterate through file_names to check individual files
+                for windows_file in file_names:
+                    # Rip out the attribute bytes of the file to see if it is hidden
+                    file_attributes = GetFileAttributesW(os.path.join(root_letter, windows_file))
+
+                    if file_attributes == 0x2:
+                        print(os.path.join(root_letter, windows_file), "is a hidden file!")
+
     else:
         raise ValueError("Huh oh, tool doesn't support digging through: {}".format(os_name) + ", sorry about that.")
         input("Press any key to exit...")
