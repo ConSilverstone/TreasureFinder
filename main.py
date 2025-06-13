@@ -56,6 +56,8 @@ permission_denied_count = 0
 unexpected_error_count = 0
 
 def collect_system_data(os_name):
+    global hidden_files_count, not_found_count, permission_denied_count, unexpected_error_count
+
     if os_name == 'posix':
         # Unix-like OS
         print("Digging through file system for Unix-like OS...")
@@ -120,19 +122,7 @@ def collect_system_data(os_name):
                                 print("Here be treasure!", root, file, uid)
                                 hidden_files_count += 1
                             # Critial failure toggle switch
-                            fools_gold_linux_failure = True
-                      
-        # Print out the metrics
-        print(f"Digging complete, {hidden_files_count} hidden treasures (files) found.")
-        if not_found_count != 0:
-            print(f"{not_found_count} were expected to be found, but were not.")
-            print("Low number may indicate corrupted files", 
-                "high number may indicate a corruption with this program or target filesystem.")
-        if permission_denied_count != 0:
-            print(f"{permission_denied_count} could not be accessed due to protections.")
-        if unexpected_error_count != 0:
-            print(f"{unexpected_error_count} unexpected errors encountered.")
-
+                            fools_gold_linux_failure = True          
     elif os_name == 'nt':
         # Windows OS
         print("Digging through file system for Windows OS...")
@@ -144,6 +134,7 @@ def collect_system_data(os_name):
 
         # Define local variables
         hidden_file_attribute = 0x2 # Or simply 00000010, second flag bit being set in file header representing hidden. 
+        system_file_attribute = 0x4 # Or simply 00000100, third flag bit being set in file header representing system file.
 
         # Loop through all possible drives and return only the ones that exist on this system
         valid_drives = []
@@ -160,20 +151,48 @@ def collect_system_data(os_name):
         for walkable_drive in valid_drives:
             #iterate through the file system (file_names is returned as a list of all files in folder)
             for root_letter, folder_name, file_names in os.walk(walkable_drive, topdown=True):
-                # iterate through file_names to check individual files
-                for windows_file in file_names:
-                    # Rip out the attribute bytes of the file to see if it is hidden
-                    file_attributes = GetFileAttributesW(os.path.join(root_letter, windows_file))
+                try:
+                    # iterate through file_names to check individual files
+                    for windows_file in file_names:
+                        # Rip out the attribute bytes of the file to see if it is hidden
+                        file_attributes = GetFileAttributesW(os.path.join(root_letter, windows_file))
 
-                    if file_attributes == 0x2:
-                        print(os.path.join(root_letter, windows_file), "is a hidden file!")
-
+                        # To break it down, compare bits and if a 1 exists in the same place for both, mark true
+                        if file_attributes & hidden_file_attribute:
+                            # Same logic in reverse (NAND Gate) if they share a 1 at any point in the bytes, mark false
+                            if not file_attributes & system_file_attribute:
+                                print(os.path.join(root_letter, windows_file), "is a hidden file!")
+                                hidden_files_count += 1
+                except PermissionError:
+                    # Inform the user and press onward.
+                    permission_denied_count += 1
+                    continue
+                except FileNotFoundError:
+                    # Highly unlikely, indicates a fault with the program/filesystem
+                    not_found_count += 1
+                    continue
+                except Exception as e:
+                    unexpected_error_count += 1
+                    continue
     else:
         raise ValueError("Huh oh, tool doesn't support digging through: {}".format(os_name) + ", sorry about that.")
         input("Press any key to exit...")
         exit(1)
 
+def metrics_printer():
+    # Print out the metrics
+    print(f"Digging complete, {hidden_files_count} hidden treasures (files) found.")
+    if not_found_count != 0:
+        print(f"{not_found_count} were expected to be found, but were not.")
+        print("Low number may indicate corrupted files", 
+            "high number may indicate a corruption with this program or target filesystem.")
+    if permission_denied_count != 0:
+        print(f"{permission_denied_count} could not be accessed due to protections.")
+    if unexpected_error_count != 0:
+        print(f"{unexpected_error_count} unexpected errors encountered.")
+
 """
 Core program running functions and user interaction
 """
 collect_system_data(os_name)
+metrics_printer()
